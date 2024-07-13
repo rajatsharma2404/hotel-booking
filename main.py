@@ -1,7 +1,8 @@
 import pandas as pd
 
 df = pd.read_csv("hotels.csv", dtype={'id':str})
-card_df= pd.read_csv("card_security.csv", dtype=str).to_dict(orient='records')
+card_df= pd.read_csv("cards.csv", dtype=str).to_dict(orient='records')
+security_details_df = pd.read_csv("card_security.csv", dtype=str)
 class Hotel:
     def __init__(self, hotel_id):
         self.hotel_id = hotel_id
@@ -39,12 +40,24 @@ class CreditCard:
     def __init__(self, number):
         self.number = number
 
-    def validate(self,password):
-        card_details = {'number':self.number, 'password': password}
+    def validate(self,expiration, cvc, holder):
+        card_details = {'number':self.number, 'expiration':expiration, 'cvc' :cvc, 'holder' :holder}
         if card_details in card_df:
             return True
         else:
             return False
+
+
+class SecureCreditCard(CreditCard):
+    def authenticate(self, given_password):
+        password = security_details_df.loc[security_details_df['number'] == self.number, 'password'].squeeze()
+        if given_password == password:
+            return True
+        else:
+            return False
+
+
+
 
 
 
@@ -54,13 +67,17 @@ hotel_ID = input("enter id of hotel ")
 hotel = Hotel(hotel_ID)
 
 if hotel.available():
-    credit_card = CreditCard(number = "1234567890123456")
+    credit_card = SecureCreditCard(number = "1234")
 
-    if credit_card.validate(password='mypass'):
-        hotel.book()
-        name = input("Enter your name ")
-        generate_ticket = ReservationTicket(customer_name=name, hotel_object=hotel)
-        print(generate_ticket.generate())
+    if credit_card.validate(expiration='12/26', cvc = '123', holder = 'JOHN SMITH'):
+        passw = input("Enter you card password ")
+        if credit_card.authenticate(passw):
+            hotel.book()
+            name = input("Enter your name ")
+            generate_ticket = ReservationTicket(customer_name=name, hotel_object=hotel)
+            print(generate_ticket.generate())
+        else:
+            print("Wrong password!")
 
     else:
         print("Something wrong with the payment!")
